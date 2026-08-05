@@ -2,7 +2,14 @@ import { app } from 'electron'
 import { dirname, join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Task, TaskInput, TaskUpdate } from '../shared/types'
+import type { Task, TaskInput, TaskUpdate, TaskStatus } from '../shared/types'
+
+const STATUS_ORDER: Record<TaskStatus, number> = {
+  not_started: 0,
+  in_progress: 1,
+  testing: 2,
+  completed: 3
+}
 
 export class TaskStore {
   private readonly file: string
@@ -21,6 +28,13 @@ export class TaskStore {
     } catch {
       this.tasks = []
     }
+    // 兼容旧数据：completed 布尔值迁移为 status 字段
+    this.tasks = this.tasks.map((t) => {
+      if (!t.status) {
+        t.status = (t as unknown as { completed?: boolean }).completed ? 'completed' : 'not_started'
+      }
+      return t
+    })
   }
 
   private save(): void {
@@ -30,7 +44,7 @@ export class TaskStore {
 
   list(): Task[] {
     return [...this.tasks].sort((a, b) => {
-      if (a.completed !== b.completed) return a.completed ? 1 : -1
+      if (a.status !== b.status) return STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
       return b.createdAt - a.createdAt
     })
   }
@@ -45,7 +59,7 @@ export class TaskStore {
       id: randomUUID(),
       title: input.title.trim(),
       description: input.description.trim(),
-      completed: false,
+      status: input.status,
       priority: input.priority,
       dueAt: input.dueAt,
       createdAt: now,
@@ -62,9 +76,9 @@ export class TaskStore {
 
     if (patch.title !== undefined) task.title = patch.title.trim()
     if (patch.description !== undefined) task.description = patch.description.trim()
+    if (patch.status !== undefined) task.status = patch.status
     if (patch.priority !== undefined) task.priority = patch.priority
     if (patch.dueAt !== undefined) task.dueAt = patch.dueAt
-    if (patch.completed !== undefined) task.completed = patch.completed
     task.updatedAt = Date.now()
 
     this.save()

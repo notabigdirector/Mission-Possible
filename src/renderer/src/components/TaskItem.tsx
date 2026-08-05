@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import type { Task, TaskInput, TaskPriority } from '../../../shared/types'
+import type { Task, TaskInput, TaskPriority, TaskStatus, TaskUpdate } from '../../../shared/types'
+import { TASK_STATUSES, STATUS_LABEL } from '../../../shared/types'
 
 interface Props {
   task: Task
+  now: number
   onToggle: (task: Task) => void
-  onUpdate: (id: string, patch: Partial<TaskInput> & { completed?: boolean }) => void
+  onUpdate: (id: string, patch: TaskUpdate) => void
   onRemove: (id: string) => void
 }
 
@@ -14,19 +16,23 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   low: '低'
 }
 
-function TaskItem({ task, onToggle, onUpdate, onRemove }: Props): React.JSX.Element {
+function TaskItem({ task, now, onToggle, onUpdate, onRemove }: Props): React.JSX.Element {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<TaskInput>({
     title: task.title,
     description: task.description,
+    status: task.status,
     priority: task.priority,
     dueAt: task.dueAt
   })
+
+  const completed = task.status === 'completed'
 
   const startEdit = (): void => {
     setDraft({
       title: task.title,
       description: task.description,
+      status: task.status,
       priority: task.priority,
       dueAt: task.dueAt
     })
@@ -53,6 +59,17 @@ function TaskItem({ task, onToggle, onUpdate, onRemove }: Props): React.JSX.Elem
           onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
         />
         <div className="task-actions">
+          <select
+            className="input select"
+            value={draft.status}
+            onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value as TaskStatus }))}
+          >
+            {TASK_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
           <select
             className="input select"
             value={draft.priority}
@@ -85,22 +102,35 @@ function TaskItem({ task, onToggle, onUpdate, onRemove }: Props): React.JSX.Elem
   }
 
   return (
-    <li className={`task-item priority-${task.priority}${task.completed ? ' completed' : ''}`}>
+    <li className={`task-item priority-${task.priority}${completed ? ' completed' : ''}`}>
       <input
         className="checkbox"
         type="checkbox"
-        checked={task.completed}
+        checked={completed}
         onChange={() => onToggle(task)}
       />
       <div className="task-body">
-        <div className="task-title">{task.title}</div>
-        {task.description && <div className="task-desc">{task.description}</div>}
-        <div className="task-meta">
-          <span className={`badge priority-${task.priority}`}>
-            {PRIORITY_LABEL[task.priority]}优先级
+        <span className="task-title">{task.title}</span>
+        <select
+          className={`status-select status-${task.status}`}
+          value={task.status}
+          onChange={(e) => onUpdate(task.id, { status: e.target.value as TaskStatus })}
+        >
+          {TASK_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>
+        <span className={`badge priority-${task.priority}`}>
+          {PRIORITY_LABEL[task.priority]}优先级
+        </span>
+        {task.dueAt && (
+          <span className={`due${task.dueAt < now ? ' overdue' : ''}`}>
+            {formatCountdown(task.dueAt, now)}
           </span>
-          {task.dueAt && <span className="due">截止 {formatDate(task.dueAt)}</span>}
-        </div>
+        )}
+        {task.description && <span className="task-desc">{task.description}</span>}
       </div>
       <div className="task-actions">
         <button className="btn" onClick={startEdit}>
@@ -114,9 +144,22 @@ function TaskItem({ task, onToggle, onUpdate, onRemove }: Props): React.JSX.Elem
   )
 }
 
-function formatDate(timestamp: number): string {
-  const d = new Date(timestamp)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+function formatCountdown(dueAt: number, now: number): string {
+  const diff = dueAt - now
+  const abs = Math.abs(diff)
+  const day = 86_400_000
+  const hour = 3_600_000
+  const minute = 60_000
+
+  if (diff < 0) {
+    if (abs >= day) return `已过期 ${Math.floor(abs / day)} 天`
+    if (abs >= hour) return `已过期 ${Math.floor(abs / hour)} 小时`
+    return `已过期 ${Math.max(1, Math.floor(abs / minute))} 分钟`
+  }
+  if (abs >= day) return `剩 ${Math.floor(abs / day)} 天`
+  if (abs >= hour) return `剩 ${Math.floor(abs / hour)} 小时`
+  if (abs >= minute) return `剩 ${Math.floor(abs / minute)} 分钟`
+  return '即将截止'
 }
 
 export default TaskItem

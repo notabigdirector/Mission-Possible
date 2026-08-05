@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Task, TaskInput } from '../../shared/types'
+import type { Task, TaskInput, TaskStatus, TaskUpdate } from '../../shared/types'
 import TaskForm from './components/TaskForm'
 import TaskItem from './components/TaskItem'
 
-type Filter = 'all' | 'active' | 'completed'
+type Filter = 'all' | TaskStatus
 
 function App(): React.JSX.Element {
   const [tasks, setTasks] = useState<Task[]>([])
   const [filter, setFilter] = useState<Filter>('all')
+  const [hideCompleted, setHideCompleted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const refresh = useCallback(async (): Promise<void> => {
     const list = await window.api.tasks.list()
@@ -45,7 +52,8 @@ function App(): React.JSX.Element {
   const handleToggle = useCallback(
     async (task: Task): Promise<void> => {
       try {
-        await window.api.tasks.update(task.id, { completed: !task.completed })
+        const status: TaskStatus = task.status === 'completed' ? 'in_progress' : 'completed'
+        await window.api.tasks.update(task.id, { status })
         await refresh()
       } catch {
         setError('更新任务失败')
@@ -55,7 +63,7 @@ function App(): React.JSX.Element {
   )
 
   const handleUpdate = useCallback(
-    async (id: string, patch: Partial<TaskInput> & { completed?: boolean }): Promise<void> => {
+    async (id: string, patch: TaskUpdate): Promise<void> => {
       try {
         await window.api.tasks.update(id, patch)
         await refresh()
@@ -79,17 +87,14 @@ function App(): React.JSX.Element {
   )
 
   const filtered = useMemo(() => {
-    switch (filter) {
-      case 'active':
-        return tasks.filter((t) => !t.completed)
-      case 'completed':
-        return tasks.filter((t) => t.completed)
-      default:
-        return tasks
-    }
-  }, [tasks, filter])
+    if (filter !== 'all') return tasks.filter((t) => t.status === filter)
+    return hideCompleted ? tasks.filter((t) => t.status !== 'completed') : tasks
+  }, [tasks, filter, hideCompleted])
 
-  const activeCount = useMemo(() => tasks.filter((t) => !t.completed).length, [tasks])
+  const countBy = useCallback(
+    (status: TaskStatus): number => tasks.filter((t) => t.status === status).length,
+    [tasks]
+  )
 
   return (
     <div className="app">
@@ -103,18 +108,38 @@ function App(): React.JSX.Element {
             全部 ({tasks.length})
           </button>
           <button
-            className={filter === 'active' ? 'filter active' : 'filter'}
-            onClick={() => setFilter('active')}
+            className={filter === 'not_started' ? 'filter active' : 'filter'}
+            onClick={() => setFilter('not_started')}
           >
-            进行中 ({activeCount})
+            未开始 ({countBy('not_started')})
+          </button>
+          <button
+            className={filter === 'in_progress' ? 'filter active' : 'filter'}
+            onClick={() => setFilter('in_progress')}
+          >
+            进行中 ({countBy('in_progress')})
+          </button>
+          <button
+            className={filter === 'testing' ? 'filter active' : 'filter'}
+            onClick={() => setFilter('testing')}
+          >
+            测试中 ({countBy('testing')})
           </button>
           <button
             className={filter === 'completed' ? 'filter active' : 'filter'}
             onClick={() => setFilter('completed')}
           >
-            已完成 ({tasks.length - activeCount})
+            已完成 ({countBy('completed')})
           </button>
         </nav>
+        <label className="hide-completed">
+          <input
+            type="checkbox"
+            checked={hideCompleted}
+            onChange={(e) => setHideCompleted(e.target.checked)}
+          />
+          隐藏已完成
+        </label>
       </header>
 
       {error && (
@@ -135,6 +160,7 @@ function App(): React.JSX.Element {
             <TaskItem
               key={task.id}
               task={task}
+              now={now}
               onToggle={handleToggle}
               onUpdate={handleUpdate}
               onRemove={handleRemove}

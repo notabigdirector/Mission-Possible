@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import type { TaskInput, TaskPriority } from '../../../shared/types'
+import type { TaskInput, TaskPriority, TaskStatus } from '../../../shared/types'
+import { TASK_STATUSES, STATUS_LABEL } from '../../../shared/types'
 
 const EMPTY: TaskInput = {
   title: '',
   description: '',
+  status: 'not_started',
   priority: 'medium',
   dueAt: null
 }
@@ -35,6 +37,17 @@ function TaskForm({ onCreate }: Props): React.JSX.Element {
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
         />
+        <select
+          className="input select"
+          value={form.status}
+          onChange={(e) => set('status', e.target.value as TaskStatus)}
+        >
+          {TASK_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>
         <select
           className="input select"
           value={form.priority}

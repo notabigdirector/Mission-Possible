@@ -55,6 +55,59 @@
   color: #fff;
 }
 
+.hide-completed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ev-c-text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.hide-completed input {
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--ev-c-text-2);
+  font-size: 11px;
+  padding: 2px 18px 2px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  outline: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'><path d='M0 0l4 6 4-6z' fill='currentColor'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+
+.status-select.status-not_started {
+  color: var(--ev-c-text-2);
+}
+
+.status-select.status-in_progress {
+  color: var(--color-primary);
+}
+
+.status-select.status-testing {
+  color: #c05be8;
+}
+
+.status-select.status-completed {
+  color: var(--color-low);
+}
+
+.status-select option {
+  background: var(--ev-c-black-mute);
+  color: var(--ev-c-text-1);
+}
+
 .error-banner {
   background: rgba(229, 83, 75, 0.15);
   border: 1px solid var(--color-danger);
@@ -168,7 +221,7 @@
 
 .task-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   background: var(--color-card);
   border: 1px solid var(--color-border);
@@ -206,28 +259,26 @@
 .task-body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .task-title {
   font-size: 15px;
   font-weight: 500;
-  word-break: break-word;
+  flex-shrink: 0;
 }
 
 .task-desc {
   font-size: 13px;
   color: var(--ev-c-text-2);
-  margin-top: 4px;
-  word-break: break-word;
-  white-space: pre-wrap;
-}
-
-.task-meta {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-top: 8px;
-  flex-wrap: wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 120px;
+  min-width: 0;
 }
 
 .badge {
@@ -235,6 +286,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid;
+  flex-shrink: 0;
 }
 
 .badge.priority-high {
@@ -255,6 +307,12 @@
 .due {
   font-size: 12px;
   color: var(--ev-c-text-2);
+  flex-shrink: 0;
+}
+
+.due.overdue {
+  color: var(--color-danger);
+  font-weight: 500;
 }
 
 .task-actions {
