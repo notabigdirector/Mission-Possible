@@ -35,7 +35,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and publish
-        run: npm run release:win
+      - name: Build
+        run: npm run build:win
+
+      - name: Clean old release
+        shell: bash
+        run: gh release delete "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --yes || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release and upload assets
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "$VERSION" --notes "" \
+            "dist/mission-app-${VERSION}-setup.exe" \
+            "dist/mission-app-${VERSION}-setup.exe.blockmap" \
+            "dist/latest.yml"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
