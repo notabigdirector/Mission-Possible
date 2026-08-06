@@ -103,18 +103,28 @@ git tag v1.2.0
 git push origin v1.2.0
 ```
 
-`.github/workflows/release.yml` 会自动执行：安装依赖 → 从 tag 设置版本号 → 构建 → 上传 `setup.exe` + `latest.yml`（更新元数据）到 GitHub Releases。
+`.github/workflows/release.yml` 会自动执行：安装依赖 → 从 tag 设置版本号 → 构建 → 发布到 GitHub Releases。
 
-> 重新发布同一版本：先 `git push origin :refs/tags/vX.Y.Z` 删除远端 tag，本地 `git tag -f vX.Y.Z` 重新打在新提交上，再 `git push origin vX.Y.Z`。
+发布命令 `npm run release:win` 内部包含三步：
+
+1. `npm run build`：类型检查并构建安装包
+2. `node scripts/prepare-release.mjs`：通过 GitHub API 删除该 tag 的所有历史 Release，并用 `draft: false` 预建唯一的空 Release
+3. `electron-builder --win --publish always`：把 `setup.exe`、`.blockmap`、`latest.yml` 全部上传到该 Release
+
+> 预建 Release 是为了避免 electron-builder 并发创建两个同名 Release 导致产物被拆散（会使自动更新拉不到 `latest.yml`）。该脚本只依赖 Node 内置 `fetch` 与 `GH_TOKEN`，无需安装 `gh`。
+
+> 重新发布同一版本：先 `git push origin :refs/tags/vX.Y.Z` 删除远端 tag，本地 `git tag -f vX.Y.Z` 重新打在新提交上，再 `git push origin vX.Y.Z`。发布时 `prepare-release.mjs` 会自动清理旧的 Release 记录。
 
 ### 手动发布（不使用 CI）
 
 ```bash
-$env:GH_TOKEN="github_pat_xxx"   # 本机需设置带 repo 权限的 token
+$env:GH_TOKEN="github_pat_xxx"   # 本机需设置带 repo 权限的 token（需先打版本 tag）
+git tag vX.Y.Z
+git push origin vX.Y.Z
 npm run release:win
 ```
 
-`npm run release:win` 会在本机构建并直接发布到 GitHub Releases。
+`npm run release:win` 会在本机构建并直接发布到 GitHub Releases（与 CI 使用同一套流程，无需安装 `gh`）。
 
 ### 用户端升级流程
 
