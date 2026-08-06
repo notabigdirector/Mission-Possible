@@ -4,6 +4,8 @@ import { TASK_STATUSES, STATUS_LABEL } from '../../../shared/types'
 
 interface Props {
   task: Task
+  subtasks: Task[]
+  hideCompleted: boolean
   now: number
   onToggle: (task: Task) => void
   onUpdate: (id: string, patch: TaskUpdate) => void
@@ -16,9 +18,19 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   low: '低'
 }
 
-function TaskItem({ task, now, onToggle, onUpdate, onRemove }: Props): React.JSX.Element {
+function TaskItem({
+  task,
+  subtasks,
+  hideCompleted,
+  now,
+  onToggle,
+  onUpdate,
+  onRemove
+}: Props): React.JSX.Element {
   const [editing, setEditing] = useState(false)
+  const [subtasksOpen, setSubtasksOpen] = useState(true)
   const [draft, setDraft] = useState<TaskInput>({
+    parentId: task.parentId,
     title: task.title,
     description: task.description,
     status: task.status,
@@ -26,10 +38,16 @@ function TaskItem({ task, now, onToggle, onUpdate, onRemove }: Props): React.JSX
     dueAt: task.dueAt
   })
 
+  const isSubtask = task.parentId !== null
   const completed = task.status === 'completed'
+  const visibleSubtasks = hideCompleted
+    ? subtasks.filter((s) => s.status !== 'completed')
+    : subtasks
+  const doneCount = subtasks.filter((s) => s.status === 'completed').length
 
   const startEdit = (): void => {
     setDraft({
+      parentId: task.parentId,
       title: task.title,
       description: task.description,
       status: task.status,
@@ -47,7 +65,7 @@ function TaskItem({ task, now, onToggle, onUpdate, onRemove }: Props): React.JSX
 
   if (editing) {
     return (
-      <li className={`task-item editing priority-${task.priority}`}>
+      <li className={`task-item editing priority-${task.priority}${isSubtask ? ' subtask' : ''}`}>
         <input
           className="input"
           value={draft.title}
@@ -86,7 +104,7 @@ function TaskItem({ task, now, onToggle, onUpdate, onRemove }: Props): React.JSX
             onChange={(e) =>
               setDraft((d) => ({
                 ...d,
-                dueAt: e.target.value ? new Date(e.target.value + 'T00:00:00').getTime() : null
+                dueAt: e.target.value ? new Date(e.target.value + 'T23:59:59.999').getTime() : null
               }))
             }
           />
@@ -102,45 +120,90 @@ function TaskItem({ task, now, onToggle, onUpdate, onRemove }: Props): React.JSX
   }
 
   return (
-    <li className={`task-item priority-${task.priority}${completed ? ' completed' : ''}`}>
-      <input
-        className="checkbox"
-        type="checkbox"
-        checked={completed}
-        onChange={() => onToggle(task)}
-      />
-      <div className="task-body">
-        <span className="task-title">{task.title}</span>
-        <select
-          className={`status-select status-${task.status}`}
-          value={task.status}
-          onChange={(e) => onUpdate(task.id, { status: e.target.value as TaskStatus })}
-        >
-          {TASK_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-        <span className={`badge priority-${task.priority}`}>
-          {PRIORITY_LABEL[task.priority]}优先级
-        </span>
-        {task.dueAt && (
-          <span className={`due${task.dueAt < now ? ' overdue' : ''}`}>
-            {formatCountdown(task.dueAt, now)}
-          </span>
+    <div className="task-group">
+      <li
+        className={`task-item priority-${task.priority}${completed ? ' completed' : ''}${
+          isSubtask ? ' subtask' : ''
+        }`}
+      >
+        {!isSubtask && (
+          <button
+            className="subtask-toggle"
+            title={subtasksOpen ? '隐藏子任务' : '显示子任务'}
+            onClick={() => setSubtasksOpen((v) => !v)}
+          >
+            <span className="subtask-arrow">{subtasksOpen ? '▾' : '▸'}</span>
+            <span className="subtask-progress">
+              {subtasks.length > 0 ? `${doneCount}/${subtasks.length}` : '0'}
+            </span>
+          </button>
         )}
-        {task.description && <span className="task-desc">{task.description}</span>}
-      </div>
-      <div className="task-actions">
-        <button className="btn" onClick={startEdit}>
-          编辑
-        </button>
-        <button className="btn danger" onClick={() => onRemove(task.id)}>
-          删除
-        </button>
-      </div>
-    </li>
+        <input
+          className="checkbox"
+          type="checkbox"
+          checked={completed}
+          onChange={() => onToggle(task)}
+        />
+        <div className="task-body">
+          <span className="task-title">{task.title}</span>
+          <select
+            className={`status-select status-${task.status}`}
+            value={task.status}
+            onChange={(e) => onUpdate(task.id, { status: e.target.value as TaskStatus })}
+          >
+            {TASK_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+          <span className={`badge priority-${task.priority}`}>
+            {PRIORITY_LABEL[task.priority]}优先级
+          </span>
+          {task.dueAt && (
+            <span className={`due${task.dueAt < now ? ' overdue' : ''}`}>
+              {formatCountdown(task.dueAt, now)}
+            </span>
+          )}
+          {task.description && <span className="task-desc">{task.description}</span>}
+        </div>
+        <div className="task-actions">
+          <button className="btn" onClick={startEdit}>
+            编辑
+          </button>
+          <button className="btn danger" onClick={() => onRemove(task.id)}>
+            删除
+          </button>
+        </div>
+      </li>
+
+      {!isSubtask && (
+        <div className="subtask-panel">
+          {subtasksOpen && (
+            <div className="subtask-area">
+              {visibleSubtasks.length === 0 ? (
+                <p className="subtask-empty">暂无子任务</p>
+              ) : (
+                <div className="subtask-list">
+                  {visibleSubtasks.map((st) => (
+                    <TaskItem
+                      key={st.id}
+                      task={st}
+                      subtasks={[]}
+                      hideCompleted={hideCompleted}
+                      now={now}
+                      onToggle={onToggle}
+                      onUpdate={onUpdate}
+                      onRemove={onRemove}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

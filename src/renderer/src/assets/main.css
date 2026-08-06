@@ -330,3 +330,86 @@
 .task-item.editing .task-actions {
   justify-content: flex-end;
 }
+
+.task-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-item.subtask {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border-left-width: 3px;
+}
+
+.task-item.subtask .task-title {
+  font-size: 13px;
+}
+
+.task-item.subtask .checkbox {
+  width: 15px;
+  height: 15px;
+}
+
+.task-item.subtask .btn {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.subtask-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-left: 30px;
+}
+
+.subtask-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--ev-c-text-2);
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.15s;
+}
+
+.subtask-toggle:hover {
+  background: var(--ev-c-gray-3);
+  color: var(--ev-c-text-1);
+}
+
+.subtask-arrow {
+  font-size: 10px;
+}
+
+.subtask-progress {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ev-c-text-2);
+}
+
+.subtask-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subtask-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subtask-empty {
+  font-size: 12px;
+  color: var(--ev-c-text-3);
+  padding: 4px 8px;
+}

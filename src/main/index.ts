@@ -9,8 +9,10 @@ import { AppUpdater } from './update'
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
+    x: 0,
+    y: 0,
     width: 900,
-    height: 670,
+    height: 1080,
     show: false,
     autoHideMenuBar: true,
     icon,

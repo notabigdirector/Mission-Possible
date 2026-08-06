@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import type { TaskInput, TaskPriority, TaskStatus } from '../../../shared/types'
+import type { Task, TaskInput, TaskPriority, TaskStatus } from '../../../shared/types'
 import { TASK_STATUSES, STATUS_LABEL } from '../../../shared/types'
 
 const EMPTY: TaskInput = {
+  parentId: null,
   title: '',
   description: '',
   status: 'not_started',
@@ -11,10 +12,11 @@ const EMPTY: TaskInput = {
 }
 
 interface Props {
+  parents: Task[]
   onCreate: (input: TaskInput) => void
 }
 
-function TaskForm({ onCreate }: Props): React.JSX.Element {
+function TaskForm({ parents, onCreate }: Props): React.JSX.Element {
   const [form, setForm] = useState<TaskInput>(EMPTY)
 
   const set = <K extends keyof TaskInput>(key: K, value: TaskInput[K]): void => {
@@ -31,6 +33,18 @@ function TaskForm({ onCreate }: Props): React.JSX.Element {
   return (
     <form className="task-form" onSubmit={handleSubmit}>
       <div className="form-row">
+        <select
+          className="input select"
+          value={form.parentId ?? ''}
+          onChange={(e) => set('parentId', e.target.value ? e.target.value : null)}
+        >
+          <option value="">主任务（无上级）</option>
+          {parents.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </select>
         <input
           className="input"
           placeholder="任务标题"
@@ -62,7 +76,7 @@ function TaskForm({ onCreate }: Props): React.JSX.Element {
           type="date"
           value={form.dueAt ? new Date(form.dueAt).toISOString().slice(0, 10) : ''}
           onChange={(e) =>
-            set('dueAt', e.target.value ? new Date(e.target.value + 'T00:00:00').getTime() : null)
+            set('dueAt', e.target.value ? new Date(e.target.value + 'T23:59:59.999').getTime() : null)
           }
         />
         <button className="btn primary" type="submit" disabled={!form.title.trim()}>

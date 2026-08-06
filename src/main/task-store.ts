@@ -33,8 +33,12 @@ export class TaskStore {
       if (!t.status) {
         t.status = (t as unknown as { completed?: boolean }).completed ? 'completed' : 'not_started'
       }
+      if (t.parentId === undefined) t.parentId = null
       return t
     })
+    // 清理孤儿子任务（父任务已不存在）
+    const ids = new Set(this.tasks.map((t) => t.id))
+    this.tasks = this.tasks.filter((t) => !t.parentId || ids.has(t.parentId))
   }
 
   private save(): void {
@@ -55,8 +59,13 @@ export class TaskStore {
 
   create(input: TaskInput): Task {
     const now = Date.now()
+    if (input.parentId) {
+      const parent = this.tasks.find((t) => t.id === input.parentId)
+      if (!parent || parent.parentId) throw new Error('无效的父任务')
+    }
     const task: Task = {
       id: randomUUID(),
+      parentId: input.parentId,
       title: input.title.trim(),
       description: input.description.trim(),
       status: input.status,
@@ -89,6 +98,8 @@ export class TaskStore {
     const index = this.tasks.findIndex((t) => t.id === id)
     if (index === -1) return false
     this.tasks.splice(index, 1)
+    // 级联删除该任务下的所有子任务
+    this.tasks = this.tasks.filter((t) => t.parentId !== id)
     this.save()
     return true
   }

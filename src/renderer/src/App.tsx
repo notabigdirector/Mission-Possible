@@ -8,7 +8,7 @@ type Filter = 'all' | TaskStatus
 function App(): React.JSX.Element {
   const [tasks, setTasks] = useState<Task[]>([])
   const [filter, setFilter] = useState<Filter>('all')
-  const [hideCompleted, setHideCompleted] = useState(false)
+  const [hideCompleted, setHideCompleted] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
@@ -86,10 +86,30 @@ function App(): React.JSX.Element {
     [refresh]
   )
 
+  const groups = useMemo(() => {
+    const map = new Map<string, Task[]>()
+    for (const t of tasks) {
+      if (!t.parentId) continue
+      const arr = map.get(t.parentId) ?? []
+      arr.push(t)
+      map.set(t.parentId, arr)
+    }
+    return map
+  }, [tasks])
+
+  const mainTasks = useMemo(() => tasks.filter((t) => !t.parentId), [tasks])
+
   const filtered = useMemo(() => {
-    if (filter !== 'all') return tasks.filter((t) => t.status === filter)
-    return hideCompleted ? tasks.filter((t) => t.status !== 'completed') : tasks
+    let top = tasks.filter((t) => !t.parentId)
+    if (filter !== 'all') top = top.filter((t) => t.status === filter)
+    if (hideCompleted) top = top.filter((t) => t.status !== 'completed')
+    return top
   }, [tasks, filter, hideCompleted])
+
+  const sortSubtasks = useCallback(
+    (list: Task[]): Task[] => [...list].sort((a, b) => a.createdAt - b.createdAt),
+    []
+  )
 
   const countBy = useCallback(
     (status: TaskStatus): number => tasks.filter((t) => t.status === status).length,
@@ -148,7 +168,7 @@ function App(): React.JSX.Element {
         </div>
       )}
 
-      <TaskForm onCreate={handleCreate} />
+      <TaskForm parents={mainTasks} onCreate={handleCreate} />
 
       <main className="task-list">
         {filtered.length === 0 ? (
@@ -160,6 +180,8 @@ function App(): React.JSX.Element {
             <TaskItem
               key={task.id}
               task={task}
+              subtasks={sortSubtasks(groups.get(task.id) ?? [])}
+              hideCompleted={hideCompleted}
               now={now}
               onToggle={handleToggle}
               onUpdate={handleUpdate}
