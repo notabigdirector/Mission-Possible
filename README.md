@@ -75,40 +75,54 @@ npm run build:win          # 构建 Windows 安装包（dist/ 目录）
      provider: github
      owner: YOUR_GITHUB_USERNAME
      repo: YOUR_REPOSITORY_NAME
+     releaseType: release   # 必须为 release，不能是 draft（草稿 Release 无法自动更新）
    ```
 2. 在 GitHub 创建同名仓库并推送代码：
    ```bash
    git remote add origin git@github.com:<用户名>/<仓库>.git
    git push -u origin main
    ```
-3. 在 GitHub 仓库 **Settings → Secrets and variables → Actions** 添加 `GH_TOKEN`（Personal access token，勾选 `repo` 权限），用于工作流上传 Release 产物。
+3. 无需配置任何 secret。工作流使用 GitHub Actions 自动提供的 `GITHUB_TOKEN`（已在 `release.yml` 中声明 `permissions: contents: write`）。
 
-### 发布新版本（推荐：CI 自动发布）
-
-提交改动后打上版本号 tag 并推送：
+### 发布新版本（已验证流程）
 
 ```bash
-git add . && git commit -m "feat: 新功能描述"
-git tag v1.1.0
-git push origin main --tags
+# 1. 本地验证
+npm run typecheck && npm run lint
+
+# 2. 更新版本号（同时更新 package.json 与 package-lock.json，不自动打 tag）
+npm version 1.2.0 --no-git-tag-version
+
+# 3. 提交并推送
+git add -A
+git commit -m "feat: 新功能描述"
+git push origin main
+
+# 4. 打版本 tag 并推送（触发 CI 发布）
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
-`.github/workflows/release.yml` 会自动执行：安装依赖 → 从 tag 设置版本号 → 构建 → 上传 `setup.exe` + `latest.yml` 到 GitHub Releases。
+`.github/workflows/release.yml` 会自动执行：安装依赖 → 从 tag 设置版本号 → 构建 → 上传 `setup.exe` + `latest.yml`（更新元数据）到 GitHub Releases。
+
+> 重新发布同一版本：先 `git push origin :refs/tags/vX.Y.Z` 删除远端 tag，本地 `git tag -f vX.Y.Z` 重新打在新提交上，再 `git push origin vX.Y.Z`。
 
 ### 手动发布（不使用 CI）
 
 ```bash
-npm run release:win        # 需先设置 GH_TOKEN 环境变量
+$env:GH_TOKEN="github_pat_xxx"   # 本机需设置带 repo 权限的 token
+npm run release:win
 ```
 
 `npm run release:win` 会在本机构建并直接发布到 GitHub Releases。
 
 ### 用户端升级流程
 
-已安装的用户启动应用时自动检查更新 → 发现新版本后台下载 → 弹窗提示"立即重启/稍后" → 重启完成升级。若未检测到新版本，请确认：
+已安装的用户启动应用时自动检查更新 → 发现新版本弹窗询问"是否立即下载并更新？" → 下载完成后弹窗提示"立即重启/稍后" → 重启完成升级。也可通过应用菜单 **帮助 → 检查更新** 手动检测（无新版本会提示"当前已是最新版本"）。若未检测到新版本，请确认：
 
-- tag 版本号高于用户当前安装版本（tag `v1.1.0` → 应用版本 `1.1.0`）
+- tag 版本号高于用户当前安装版本（tag `v1.2.0` → 应用版本 `1.2.0`）
 - 最新 Release 的 `latest.yml` 与 `setup.exe` 已正常上传
+- Release 不是草稿/预发布（`releaseType: release`）
 - 用户机器可访问 `github.com`
 
 ## 注意事项
