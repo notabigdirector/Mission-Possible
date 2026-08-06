@@ -5,10 +5,13 @@ import TaskItem from './components/TaskItem'
 
 type Filter = 'all' | TaskStatus
 
+type SortMode = 'default' | 'name' | 'countdown'
+
 function App(): React.JSX.Element {
   const [tasks, setTasks] = useState<Task[]>([])
   const [filter, setFilter] = useState<Filter>('all')
   const [hideCompleted, setHideCompleted] = useState(true)
+  const [sortMode, setSortMode] = useState<SortMode>('default')
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
@@ -99,17 +102,32 @@ function App(): React.JSX.Element {
 
   const mainTasks = useMemo(() => tasks.filter((t) => !t.parentId), [tasks])
 
+  const sortTasks = useCallback(
+    (list: Task[]): Task[] => {
+      const arr = [...list]
+      if (sortMode === 'name') {
+        arr.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN'))
+      } else if (sortMode === 'countdown') {
+        arr.sort((a, b) => {
+          if (a.dueAt !== null && b.dueAt !== null) return a.dueAt - b.dueAt
+          if (a.dueAt !== null) return -1
+          if (b.dueAt !== null) return 1
+          return a.createdAt - b.createdAt
+        })
+      } else {
+        arr.sort((a, b) => a.createdAt - b.createdAt)
+      }
+      return arr
+    },
+    [sortMode]
+  )
+
   const filtered = useMemo(() => {
     let top = tasks.filter((t) => !t.parentId)
     if (filter !== 'all') top = top.filter((t) => t.status === filter)
     if (hideCompleted) top = top.filter((t) => t.status !== 'completed')
-    return top
-  }, [tasks, filter, hideCompleted])
-
-  const sortSubtasks = useCallback(
-    (list: Task[]): Task[] => [...list].sort((a, b) => a.createdAt - b.createdAt),
-    []
-  )
+    return sortTasks(top)
+  }, [tasks, filter, hideCompleted, sortTasks])
 
   const countBy = useCallback(
     (status: TaskStatus): number => tasks.filter((t) => t.status === status).length,
@@ -160,6 +178,18 @@ function App(): React.JSX.Element {
           />
           隐藏已完成
         </label>
+        <label className="sort-mode">
+          排序
+          <select
+            className="input select"
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+          >
+            <option value="default">默认</option>
+            <option value="name">按名称</option>
+            <option value="countdown">按倒计时</option>
+          </select>
+        </label>
       </header>
 
       {error && (
@@ -180,7 +210,7 @@ function App(): React.JSX.Element {
             <TaskItem
               key={task.id}
               task={task}
-              subtasks={sortSubtasks(groups.get(task.id) ?? [])}
+              subtasks={sortTasks(groups.get(task.id) ?? [])}
               hideCompleted={hideCompleted}
               now={now}
               onToggle={handleToggle}
