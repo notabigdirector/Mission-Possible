@@ -42,4 +42,4 @@ publish:
   provider: github
   owner: notabigdirector
   repo: Mission-Possible
-  draft: false
+  releaseType: release
