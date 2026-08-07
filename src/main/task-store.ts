@@ -34,6 +34,7 @@ export class TaskStore {
         t.status = (t as unknown as { completed?: boolean }).completed ? 'completed' : 'not_started'
       }
       if (t.parentId === undefined) t.parentId = null
+      if (t.projectId === undefined) t.projectId = null
       return t
     })
     // 清理孤儿子任务（父任务已不存在）
@@ -59,13 +60,16 @@ export class TaskStore {
 
   create(input: TaskInput): Task {
     const now = Date.now()
+    let projectId = input.projectId ?? null
     if (input.parentId) {
       const parent = this.tasks.find((t) => t.id === input.parentId)
       if (!parent || parent.parentId) throw new Error('无效的父任务')
+      projectId = parent.projectId
     }
     const task: Task = {
       id: randomUUID(),
       parentId: input.parentId,
+      projectId,
       title: input.title.trim(),
       description: input.description.trim(),
       status: input.status,
@@ -88,10 +92,25 @@ export class TaskStore {
     if (patch.status !== undefined) task.status = patch.status
     if (patch.priority !== undefined) task.priority = patch.priority
     if (patch.dueAt !== undefined) task.dueAt = patch.dueAt
+    if (patch.projectId !== undefined) {
+      task.projectId = patch.projectId
+      if (!task.parentId) {
+        for (const t of this.tasks) {
+          if (t.parentId === task.id) t.projectId = patch.projectId
+        }
+      }
+    }
     task.updatedAt = Date.now()
 
     this.save()
     return task
+  }
+
+  clearProject(projectId: string): void {
+    for (const t of this.tasks) {
+      if (t.projectId === projectId) t.projectId = null
+    }
+    this.save()
   }
 
   remove(id: string): boolean {

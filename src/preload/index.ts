@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { Task, TaskInput, TaskUpdate } from '../shared/types'
+import type { Project, ProjectInput, ProjectUpdate, Task, TaskInput, TaskUpdate } from '../shared/types'
 
 const api = {
   app: {
@@ -13,6 +13,13 @@ const api = {
     update: (id: string, patch: TaskUpdate): Promise<Task | null> =>
       ipcRenderer.invoke('tasks:update', id, patch),
     remove: (id: string): Promise<boolean> => ipcRenderer.invoke('tasks:remove', id)
+  },
+  projects: {
+    list: (): Promise<Project[]> => ipcRenderer.invoke('projects:list'),
+    create: (input: ProjectInput): Promise<Project> => ipcRenderer.invoke('projects:create', input),
+    update: (id: string, patch: ProjectUpdate): Promise<Project | null> =>
+      ipcRenderer.invoke('projects:update', id, patch),
+    remove: (id: string): Promise<boolean> => ipcRenderer.invoke('projects:remove', id)
   }
 }
 

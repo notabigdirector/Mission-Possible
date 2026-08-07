@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { Task, TaskInput, TaskPriority, TaskStatus } from '../../../shared/types'
+import type { Project, Task, TaskInput, TaskPriority, TaskStatus } from '../../../shared/types'
 import { TASK_STATUSES, STATUS_LABEL } from '../../../shared/types'
 
 const EMPTY: TaskInput = {
   parentId: null,
+  projectId: null,
   title: '',
   description: '',
   status: 'not_started',
@@ -13,10 +14,11 @@ const EMPTY: TaskInput = {
 
 interface Props {
   parents: Task[]
+  projects: Project[]
   onCreate: (input: TaskInput) => void
 }
 
-function TaskForm({ parents, onCreate }: Props): React.JSX.Element {
+function TaskForm({ parents, projects, onCreate }: Props): React.JSX.Element {
   const [form, setForm] = useState<TaskInput>(EMPTY)
 
   const set = <K extends keyof TaskInput>(key: K, value: TaskInput[K]): void => {
@@ -36,12 +38,37 @@ function TaskForm({ parents, onCreate }: Props): React.JSX.Element {
         <select
           className="input select"
           value={form.parentId ?? ''}
-          onChange={(e) => set('parentId', e.target.value ? e.target.value : null)}
+          onChange={(e) => {
+            const parentId = e.target.value ? e.target.value : null
+            if (parentId) {
+              const parent = parents.find((p) => p.id === parentId)
+              setForm((prev) => ({
+                ...prev,
+                parentId,
+                projectId: parent ? parent.projectId : prev.projectId
+              }))
+            } else {
+              setForm((prev) => ({ ...prev, parentId: null }))
+            }
+          }}
         >
           <option value="">主任务（无上级）</option>
           {parents.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input select"
+          value={form.projectId ?? ''}
+          onChange={(e) => set('projectId', e.target.value ? e.target.value : null)}
+          disabled={!!form.parentId}
+        >
+          <option value="">无项目</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
             </option>
           ))}
         </select>

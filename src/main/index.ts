@@ -3,7 +3,8 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { TaskStore } from './task-store'
-import { taskIpc } from './ipc'
+import { ProjectStore } from './project-store'
+import { taskIpc, projectIpc } from './ipc'
 import { AppUpdater } from './update'
 
 function createWindow(): void {
@@ -82,7 +83,9 @@ app.whenReady().then(() => {
 
   // Task data backend
   const taskStore = new TaskStore()
+  const projectStore = new ProjectStore()
   taskIpc.register(taskStore)
+  projectIpc.register(projectStore, taskStore)
 
   // Auto updater (production only)
   const appUpdater = new AppUpdater()

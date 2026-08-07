@@ -14,6 +14,7 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
 export interface Task {
   id: string
   parentId: string | null
+  projectId: string | null
   title: string
   description: string
   status: TaskStatus
@@ -25,6 +26,7 @@ export interface Task {
 
 export interface TaskInput {
   parentId: string | null
+  projectId: string | null
   title: string
   description: string
   status: TaskStatus
@@ -33,3 +35,18 @@ export interface TaskInput {
 }
 
 export type TaskUpdate = Partial<TaskInput>
+
+export interface Project {
+  id: string
+  name: string
+  priority: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ProjectInput {
+  name: string
+  priority: number
+}
+
+export type ProjectUpdate = Partial<ProjectInput>

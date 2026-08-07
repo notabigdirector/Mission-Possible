@@ -10,6 +10,7 @@ interface Props {
   onToggle: (task: Task) => void
   onUpdate: (id: string, patch: TaskUpdate) => void
   onRemove: (id: string) => void
+  onOpenDetail: (task: Task) => void
 }
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
@@ -25,12 +26,14 @@ function TaskItem({
   now,
   onToggle,
   onUpdate,
-  onRemove
+  onRemove,
+  onOpenDetail
 }: Props): React.JSX.Element {
   const [editing, setEditing] = useState(false)
   const [subtasksOpen, setSubtasksOpen] = useState(true)
   const [draft, setDraft] = useState<TaskInput>({
     parentId: task.parentId,
+    projectId: task.projectId,
     title: task.title,
     description: task.description,
     status: task.status,
@@ -48,6 +51,7 @@ function TaskItem({
   const startEdit = (): void => {
     setDraft({
       parentId: task.parentId,
+      projectId: task.projectId,
       title: task.title,
       description: task.description,
       status: task.status,
@@ -145,7 +149,13 @@ function TaskItem({
           onChange={() => onToggle(task)}
         />
         <div className="task-body">
-          <span className="task-title">{task.title}</span>
+          <span
+            className="task-title"
+            title={task.title}
+            onDoubleClick={() => onOpenDetail(task)}
+          >
+            {task.title}
+          </span>
           <select
             className={`status-select status-${task.status}`}
             value={task.status}
@@ -195,6 +205,7 @@ function TaskItem({
                       onToggle={onToggle}
                       onUpdate={onUpdate}
                       onRemove={onRemove}
+                      onOpenDetail={onOpenDetail}
                     />
                   ))}
                 </div>
