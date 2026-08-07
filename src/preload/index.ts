@@ -3,6 +3,9 @@ import { electronAPI } from '@electron-toolkit/preload'
 import type { Task, TaskInput, TaskUpdate } from '../shared/types'
 
 const api = {
+  app: {
+    version: (): Promise<string> => ipcRenderer.invoke('app:version')
+  },
   tasks: {
     list: (): Promise<Task[]> => ipcRenderer.invoke('tasks:list'),
     get: (id: string): Promise<Task | null> => ipcRenderer.invoke('tasks:get', id),

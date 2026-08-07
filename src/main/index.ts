@@ -14,7 +14,7 @@ function createWindow(): void {
     width: 900,
     height: 1080,
     show: false,
-    autoHideMenuBar: true,
+    autoHideMenuBar: false,
     icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -76,6 +76,9 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // App version for the renderer
+  ipcMain.handle('app:version', () => app.getVersion())
 
   // Task data backend
   const taskStore = new TaskStore()
