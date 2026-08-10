@@ -170,7 +170,7 @@ function TaskItem({
           <span className={`badge priority-${task.priority}`}>
             {PRIORITY_LABEL[task.priority]}优先级
           </span>
-          {task.dueAt && (
+          {!completed && task.dueAt && (
             <span className={`due${task.dueAt < now ? ' overdue' : ''}`}>
               {formatCountdown(task.dueAt, now)}
             </span>
