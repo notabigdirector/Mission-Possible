@@ -16,7 +16,11 @@ export interface RegisterResult {
 
 type StatusListener = (status: SyncStatus) => void
 
-function httpRequestJson<T>(url: URL, opts: { token?: string; certPath?: string; body?: unknown }): Promise<T> {
+function httpRequestJson<T>(
+  url: URL,
+  apiPath: string,
+  opts: { token?: string; certPath?: string; body?: unknown }
+): Promise<T> {
   const isHttps = url.protocol === 'https:'
   const payload = opts.body === undefined ? null : JSON.stringify(opts.body)
 
@@ -37,7 +41,7 @@ function httpRequestJson<T>(url: URL, opts: { token?: string; certPath?: string;
     method: 'POST',
     hostname: url.hostname,
     port: url.port || (isHttps ? 443 : 80),
-    path: `${url.pathname}${url.search}`,
+    path: apiPath,
     headers: {
       'Content-Type': 'application/json',
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {})
@@ -145,7 +149,7 @@ export class SyncService {
   async registerUser(name: string): Promise<RegisterResult> {
     const url = this.parseUrl()
     if (!url) throw new Error('请先填写服务器地址')
-    return httpRequestJson<RegisterResult>(url, {
+    return httpRequestJson<RegisterResult>(url, '/api/v1/register', {
       certPath: this.config.certPath,
       body: { name }
     })
@@ -172,7 +176,7 @@ export class SyncService {
         projects: this.projectStore.all(),
         deleted: [...this.taskStore.tombstones(), ...this.projectStore.tombstones()]
       }
-      const resp = await httpRequestJson<SyncResponse>(url, {
+      const resp = await httpRequestJson<SyncResponse>(url, '/api/v1/sync', {
         token: this.config.token,
         certPath: this.config.certPath,
         body
