@@ -260,11 +260,13 @@ function App(): React.JSX.Element {
       arr.push(t)
       subMap.set(t.parentId, arr)
     }
-    const top = tasks.filter(
-      (t) => !t.parentId && (t.status === filter || (subMap.get(t.id)?.length ?? 0) > 0)
-    )
+    const top = tasks.filter((t) => {
+      if (t.parentId) return false
+      if ((subMap.get(t.id)?.length ?? 0) > 0) return true
+      return !groups.has(t.id) && t.status === filter
+    })
     return { top: sortTasks(top), subMap }
-  }, [tasks, filter, sortTasks])
+  }, [tasks, filter, sortTasks, groups])
 
   const visibleTasks = useMemo(() => {
     if (statusResult) return statusResult.top
