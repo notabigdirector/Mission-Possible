@@ -251,12 +251,28 @@ function App(): React.JSX.Element {
     return top
   }, [tasks, filter, hideCompleted])
 
+  const statusResult = useMemo(() => {
+    if (filter === 'all') return null
+    const subMap = new Map<string, Task[]>()
+    for (const t of tasks) {
+      if (!t.parentId || t.status !== filter) continue
+      const arr = subMap.get(t.parentId) ?? []
+      arr.push(t)
+      subMap.set(t.parentId, arr)
+    }
+    const top = tasks.filter(
+      (t) => !t.parentId && (t.status === filter || (subMap.get(t.id)?.length ?? 0) > 0)
+    )
+    return { top: sortTasks(top), subMap }
+  }, [tasks, filter, sortTasks])
+
   const visibleTasks = useMemo(() => {
+    if (statusResult) return statusResult.top
     let list = baseFiltered
     if (projectFilter === 'none') list = list.filter((t) => !t.projectId)
     else if (projectFilter !== 'all') list = list.filter((t) => t.projectId === projectFilter)
     return sortTasks(list)
-  }, [baseFiltered, projectFilter, sortTasks])
+  }, [baseFiltered, projectFilter, sortTasks, statusResult])
 
   const projectGroups = useMemo(() => {
     const map = new Map<string, { project: Project | null; tasks: Task[] }>()
@@ -390,7 +406,25 @@ function App(): React.JSX.Element {
       </div>
 
       <main className="task-list">
-        {projectFilter === 'all' ? (
+        {statusResult ? (
+          statusResult.top.length === 0 ? (
+            <p className="empty-tip">暂无符合条件的任务</p>
+          ) : (
+            statusResult.top.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                subtasks={statusResult.subMap.get(task.id) ?? []}
+                hideCompleted={false}
+                now={now}
+                onToggle={handleToggle}
+                onUpdate={handleUpdate}
+                onRemove={handleRemove}
+                onOpenDetail={setDetailTask}
+              />
+            ))
+          )
+        ) : projectFilter === 'all' ? (
           projectGroups.length === 0 ? (
             <p className="empty-tip">暂无任务，从上方添加一个吧</p>
           ) : (
