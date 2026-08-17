@@ -3,6 +3,8 @@ import type {
   Project,
   ProjectInput,
   ProjectUpdate,
+  SyncConfig,
+  SyncStatus,
   Task,
   TaskInput,
   TaskStatus,
@@ -12,6 +14,7 @@ import TaskForm from './components/TaskForm'
 import TaskItem from './components/TaskItem'
 import TaskModal from './components/TaskModal'
 import ProjectManager from './components/ProjectManager'
+import SyncSettings from './components/SyncSettings'
 
 type Filter = 'all' | TaskStatus
 
@@ -31,6 +34,9 @@ function App(): React.JSX.Element {
   const [now, setNow] = useState(() => Date.now())
   const [version, setVersion] = useState('')
   const [detailTask, setDetailTask] = useState<Task | null>(null)
+  const [showSyncSettings, setShowSyncSettings] = useState(false)
+  const [syncConfig, setSyncConfig] = useState<SyncConfig | null>(null)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000)
@@ -42,6 +48,18 @@ function App(): React.JSX.Element {
       .version()
       .then(setVersion)
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    window.api.sync
+      .getConfig()
+      .then(setSyncConfig)
+      .catch(() => {})
+    window.api.sync
+      .status()
+      .then(setSyncStatus)
+      .catch(() => {})
+    return window.api.sync.onStatusChanged(setSyncStatus)
   }, [])
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -157,6 +175,11 @@ function App(): React.JSX.Element {
     [refreshProjects]
   )
 
+  const handleSaveSyncConfig = useCallback(async (config: SyncConfig): Promise<void> => {
+    const saved = await window.api.sync.setConfig(config)
+    setSyncConfig(saved)
+  }, [])
+
   const handleRemoveProject = useCallback(
     async (id: string): Promise<void> => {
       try {
@@ -270,6 +293,15 @@ function App(): React.JSX.Element {
           <div className="app-title">
             <h1>任务管理</h1>
             {version && <span className="app-version">v{version}</span>}
+            {syncStatus && (
+              <span className={`sync-indicator ${syncStatus.state}`}>
+                {syncStatus.state === 'ok' && '已同步'}
+                {syncStatus.state === 'syncing' && '同步中…'}
+                {syncStatus.state === 'error' && '同步出错'}
+                {syncStatus.state === 'offline' && '离线'}
+                {syncStatus.state === 'idle' && '未同步'}
+              </span>
+            )}
           </div>
           <nav className="filters">
             <button
@@ -321,6 +353,9 @@ function App(): React.JSX.Element {
           </label>
           <button className="btn" onClick={() => setShowProjectManager(true)}>
             管理项目
+          </button>
+          <button className="btn" onClick={() => setShowSyncSettings(true)}>
+            ☁ 同步设置
           </button>
           <label className="hide-completed">
             <input
@@ -418,6 +453,15 @@ function App(): React.JSX.Element {
           onUpdate={handleUpdateProject}
           onRemove={handleRemoveProject}
           onClose={() => setShowProjectManager(false)}
+        />
+      )}
+
+      {showSyncSettings && syncConfig && (
+        <SyncSettings
+          config={syncConfig}
+          status={syncStatus ?? { state: 'idle', lastSyncAt: null, message: '' }}
+          onSave={handleSaveSyncConfig}
+          onClose={() => setShowSyncSettings(false)}
         />
       )}
     </div>

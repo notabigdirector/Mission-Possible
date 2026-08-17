@@ -4,7 +4,9 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { TaskStore } from './task-store'
 import { ProjectStore } from './project-store'
-import { taskIpc, projectIpc } from './ipc'
+import { SyncConfigStore } from './sync-config'
+import { SyncService } from './sync'
+import { taskIpc, projectIpc, syncIpc } from './ipc'
 import { AppUpdater } from './update'
 
 function createWindow(): void {
@@ -84,8 +86,12 @@ app.whenReady().then(() => {
   // Task data backend
   const taskStore = new TaskStore()
   const projectStore = new ProjectStore()
-  taskIpc.register(taskStore)
-  projectIpc.register(projectStore, taskStore)
+  const syncConfigStore = new SyncConfigStore()
+  const syncService = new SyncService(taskStore, projectStore, syncConfigStore)
+  taskIpc.register(taskStore, syncService)
+  projectIpc.register(projectStore, taskStore, syncService)
+  syncIpc.register(syncService)
+  syncService.start()
 
   // Auto updater (production only)
   const appUpdater = new AppUpdater()

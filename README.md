@@ -8,6 +8,7 @@
 - 完成状态切换，已完成任务划线显示
 - 筛选视图：全部 / 进行中 / 已完成
 - 数据本地持久化（自动保存，升级不丢失）
+- 多设备同步：通过 `server/`（FastAPI + SQLite）在多台设备间同步任务与项目（按用户隔离、Last-write-wins 冲突合并），安卓端后续复用同一套 API
 
 ## 技术架构
 
@@ -27,6 +28,8 @@ src/
 ```
 
 数据流：渲染进程调用 `window.api.tasks.*` → IPC（invoke/handle）→ 主进程 `TaskStore` 读写 `userData/tasks.json`。
+
+同步数据流：主进程 `SyncService` 定时/变更后向同步服务 `POST /api/v1/sync` 上传本地全量数据与删除墓碑 → 服务端按 `updatedAt` 做 Last-write-wins 合并 → 返回合并后的全量状态 → `TaskStore`/`ProjectStore.applyRemote()` 应用回本地。配置保存在 `userData/sync-config.json`。服务端部署与 API 说明见 [`server/DEPLOYMENT.md`](server/DEPLOYMENT.md)。
 
 ## 环境要求
 

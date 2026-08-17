@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { dirname, join } from 'path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Task, TaskInput, TaskUpdate, TaskStatus } from '../shared/types'
+import type { SyncResponse, SyncTombstone, Task, TaskInput, TaskUpdate, TaskStatus } from '../shared/types'
 
 const STATUS_ORDER: Record<TaskStatus, number> = {
   not_started: 0,
@@ -11,9 +11,15 @@ const STATUS_ORDER: Record<TaskStatus, number> = {
   completed: 3
 }
 
+interface PersistedTasks {
+  tasks: Task[]
+  tombstones: SyncTombstone[]
+}
+
 export class TaskStore {
   private readonly file: string
   private tasks: Task[] = []
+  private _tombstones: SyncTombstone[] = []
 
   constructor() {
     this.file = join(app.getPath('userData'), 'tasks.json')
@@ -23,10 +29,18 @@ export class TaskStore {
   private load(): void {
     try {
       if (existsSync(this.file)) {
-        this.tasks = JSON.parse(readFileSync(this.file, 'utf-8'))
+        const raw = JSON.parse(readFileSync(this.file, 'utf-8'))
+        if (Array.isArray(raw)) {
+          this.tasks = raw
+          this._tombstones = []
+        } else {
+          this.tasks = raw.tasks ?? []
+          this._tombstones = raw.tombstones ?? []
+        }
       }
     } catch {
       this.tasks = []
+      this._tombstones = []
     }
     // 兼容旧数据：completed 布尔值迁移为 status 字段
     this.tasks = this.tasks.map((t) => {
@@ -37,14 +51,23 @@ export class TaskStore {
       if (t.projectId === undefined) t.projectId = null
       return t
     })
-    // 清理孤儿子任务（父任务已不存在）
+    this.cleanupOrphans()
+  }
+
+  private cleanupOrphans(): void {
     const ids = new Set(this.tasks.map((t) => t.id))
+    const orphans = this.tasks.filter((t) => t.parentId && !ids.has(t.parentId))
     this.tasks = this.tasks.filter((t) => !t.parentId || ids.has(t.parentId))
+    const now = Date.now()
+    for (const o of orphans) {
+      this._tombstones.push({ kind: 'task', id: o.id, updatedAt: now })
+    }
   }
 
   private save(): void {
     mkdirSync(dirname(this.file), { recursive: true })
-    writeFileSync(this.file, JSON.stringify(this.tasks, null, 2), 'utf-8')
+    const payload: PersistedTasks = { tasks: this.tasks, tombstones: this._tombstones }
+    writeFileSync(this.file, JSON.stringify(payload, null, 2), 'utf-8')
   }
 
   list(): Task[] {
@@ -52,6 +75,14 @@ export class TaskStore {
       if (a.status !== b.status) return STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
       return b.createdAt - a.createdAt
     })
+  }
+
+  all(): Task[] {
+    return [...this.tasks]
+  }
+
+  tombstones(): SyncTombstone[] {
+    return [...this._tombstones]
   }
 
   get(id: string): Task | undefined {
@@ -108,7 +139,10 @@ export class TaskStore {
 
   clearProject(projectId: string): void {
     for (const t of this.tasks) {
-      if (t.projectId === projectId) t.projectId = null
+      if (t.projectId === projectId) {
+        t.projectId = null
+        t.updatedAt = Date.now()
+      }
     }
     this.save()
   }
@@ -116,10 +150,39 @@ export class TaskStore {
   remove(id: string): boolean {
     const index = this.tasks.findIndex((t) => t.id === id)
     if (index === -1) return false
-    this.tasks.splice(index, 1)
-    // 级联删除该任务下的所有子任务
-    this.tasks = this.tasks.filter((t) => t.parentId !== id)
+    const now = Date.now()
+    const removed = this.tasks.filter((t) => t.id === id || t.parentId === id)
+    for (const t of removed) {
+      this._tombstones.push({ kind: 'task', id: t.id, updatedAt: now })
+    }
+    this.tasks = this.tasks.filter((t) => !removed.some((r) => r.id === t.id))
     this.save()
     return true
+  }
+
+  applyRemote(resp: SyncResponse): void {
+    // 服务端 live 记录：本地没有或时间戳更新则覆盖
+    const byId = new Map(this.tasks.map((t) => [t.id, t]))
+    for (const t of resp.tasks) {
+      const cur = byId.get(t.id)
+      if (!cur || t.updatedAt >= cur.updatedAt) {
+        byId.set(t.id, t)
+      }
+    }
+    this.tasks = [...byId.values()]
+
+    // 服务端墓碑：本地有且较旧则删除
+    for (const tb of resp.tombstones) {
+      if (tb.kind !== 'task') continue
+      const cur = byId.get(tb.id)
+      if (cur && tb.updatedAt >= cur.updatedAt) {
+        this.tasks = this.tasks.filter((t) => t.id !== tb.id)
+      }
+    }
+
+    // 墓碑以服务端为准（服务端是已见过所有客户端的超集）
+    this._tombstones = resp.tombstones.filter((tb) => tb.kind === 'task')
+    this.cleanupOrphans()
+    this.save()
   }
 }

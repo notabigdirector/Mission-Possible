@@ -50,3 +50,36 @@ export interface ProjectInput {
 }
 
 export type ProjectUpdate = Partial<ProjectInput>
+
+export interface SyncConfig {
+  serverUrl: string
+  token: string
+  certPath: string
+  userName: string
+}
+
+export type SyncState = 'idle' | 'syncing' | 'ok' | 'error' | 'offline'
+
+export interface SyncStatus {
+  state: SyncState
+  lastSyncAt: number | null
+  message: string
+}
+
+export interface SyncTombstone {
+  kind: 'task' | 'project'
+  id: string
+  updatedAt: number
+}
+
+export interface SyncRequest {
+  tasks: Task[]
+  projects: Project[]
+  deleted: SyncTombstone[]
+}
+
+export interface SyncResponse {
+  tasks: Task[]
+  projects: Project[]
+  tombstones: SyncTombstone[]
+}

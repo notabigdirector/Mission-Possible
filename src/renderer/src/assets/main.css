@@ -611,3 +611,108 @@ body {
   color: var(--ev-c-text-3);
   padding: 8px 0;
 }
+
+.sync-indicator {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  user-select: none;
+}
+
+.sync-indicator.ok {
+  color: var(--color-low);
+  border-color: var(--color-low);
+}
+
+.sync-indicator.syncing {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.sync-indicator.error {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.sync-indicator.offline {
+  color: var(--ev-c-text-3);
+}
+
+.sync-indicator.idle {
+  color: var(--ev-c-text-3);
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ev-c-text-2);
+}
+
+.sync-state.ok {
+  color: var(--color-low);
+}
+
+.sync-state.syncing {
+  color: var(--color-primary);
+}
+
+.sync-state.error {
+  color: var(--color-danger);
+}
+
+.sync-state.idle {
+  color: var(--ev-c-text-3);
+}
+
+.sync-last {
+  font-size: 11px;
+  color: var(--ev-c-text-3);
+}
+
+.sync-msg {
+  font-size: 11px;
+  color: var(--color-danger);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-notice {
+  font-size: 12px;
+  color: var(--ev-c-text-2);
+  background: var(--color-chip-bg);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.sync-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 4px 0;
+}
+
+.sync-register {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sync-register-tip {
+  font-size: 12px;
+  color: var(--ev-c-text-3);
+}
+
+.sync-register-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.sync-register-row .input {
+  flex: 1;
+  min-width: 0;
+}

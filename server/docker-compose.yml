@@ -1,0 +1,15 @@
+services:
+  mission-sync:
+    build: .
+    container_name: mission-sync
+    restart: unless-stopped
+    environment:
+      - DB_PATH=/data/sync.db
+      - PORT=9443
+    ports:
+      - "9443:9443"
+    volumes:
+      - ./data:/data
+      - ./certs:/app/certs
+    env_file:
+      - .env
